@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Productivity Hub - Track habits, tasks, goals, and analyze your productivity">
+    <meta name="theme-color" content="#3B82F6">
+    <title>Productivity Hub</title>
+    
+    <!-- CDN Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom Styles -->
+    <style>
+        /* iOS-inspired smooth scrolling */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* Panel transitions */
+        .panel {
+            transition: opacity 0.2s ease-in-out;
+        }
+        
+        .panel.hidden {
+            display: none;
+        }
+        
+        /* Bottom navigation active state */
+        .nav-btn {
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: #9CA3AF;
+            font-size: 12px;
+        }
+        
+        .nav-btn:hover {
+            background: #F3F4F6;
+        }
+        
+        .nav-btn.active {
+            color: #3B82F6;
+            background: #EFF6FF;
+        }
+        
+        .nav-btn i {
+            font-size: 20px;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3B82F6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+        
+        /* Touch-friendly buttons */
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        /* Success/Error toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .toast.success {
+            background: #10B981;
+            color: white;
+        }
+        
+        .toast.error {
+            background: #EF4444;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- App Container -->
+    <div id="app" class="max-w-md mx-auto h-screen flex flex-col bg-white shadow-lg">
+        
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-check-circle text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">Productivity Hub</h1>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-gray-300" id="status-dot"></div>
+                <span class="text-xs text-gray-500" id="status-text">Connecting...</span>
+            </div>
+        </header>
+        
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 overflow-auto custom-scrollbar">
+            
+            <!-- Loading Screen (Initial) -->
+            <div id="loading-screen" class="h-full flex flex-col items-center justify-center gap-4">
+                <div class="spinner"></div>
+                <p class="text-gray-600">Loading your productivity data...</p>
+            </div>
+            
+            <!-- PANEL 1: HABITS -->
+            <div id="habits-panel" class="panel hidden p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Habits</h2>
+                    <button class="touch-target bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                
+                <!-- Habits will be rendered here -->
+                <div id="habits-list" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-list-check text-4xl mb-2"></i>
+                        <p>Your habits will appear here</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PANEL 2: TASKS (TO-DO LIST) -->
+            <div id="tasks-panel" class="panel hidden p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">To-Do List</h2>
+                    <button class="touch-target bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                
+                <!-- Task filters -->
+                <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                    <button class="px-4 py-2 bg-primary text-white rounded-full text-sm whitespace-nowrap">All</button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap">Overdue</button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap">Upcoming</button>
+                </div>
+                
+                <!-- Tasks will be rendered here -->
+                <div id="tasks-list" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-tasks text-4xl mb-2"></i>
+                        <p>Your tasks will appear here</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PANEL 3: GOALS -->
+            <div id="goals-panel" class="panel hidden p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Goals</h2>
+                    <button class="touch-target bg-primary text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                
+                <!-- Goals will be rendered here -->
+                <div id="goals-list" class="space-y-4">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-bullseye text-4xl mb-2"></i>
+                        <p>Your goals will appear here</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PANEL 4: CALENDAR -->
+            <div id="calendar-panel" class="panel hidden p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Calendar</h2>
+                    <div class="flex gap-2">
+                        <button class="touch-target text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="touch-target text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Calendar will be rendered here -->
+                <div id="calendar-view" class="text-center text-gray-500 py-8">
+                    <i class="fas fa-calendar text-4xl mb-2"></i>
+                    <p>Calendar view will appear here</p>
+                </div>
+            </div>
+            
+            <!-- PANEL 5: ANALYTICS -->
+            <div id="analytics-panel" class="panel hidden p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Analytics</h2>
+                    <button class="touch-target text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+                
+                <!-- Analytics will be rendered here -->
+                <div id="analytics-view" class="text-center text-gray-500 py-8">
+                    <i class="fas fa-chart-line text-4xl mb-2"></i>
+                    <p>Your insights will appear here</p>
+                </div>
+            </div>
+            
+        </main>
+        
+        <!-- Bottom Navigation -->
+        <nav class="bg-white border-t border-gray-200 flex justify-around py-2 safe-area-inset-bottom">
+            <button class="nav-btn active" onclick="switchPanel('habits')" data-panel="habits">
+                <i class="fas fa-list-check"></i>
+                <span>Habits</span>
+            </button>
+            <button class="nav-btn" onclick="switchPanel('tasks')" data-panel="tasks">
+                <i class="fas fa-tasks"></i>
+                <span>Tasks</span>
+            </button>
+            <button class="nav-btn" onclick="switchPanel('goals')" data-panel="goals">
+                <i class="fas fa-bullseye"></i>
+                <span>Goals</span>
+            </button>
+            <button class="nav-btn" onclick="switchPanel('calendar')" data-panel="calendar">
+                <i class="fas fa-calendar"></i>
+                <span>Calendar</span>
+            </button>
+            <button class="nav-btn" onclick="switchPanel('analytics')" data-panel="analytics">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </button>
+        </nav>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+    
+    <!-- JavaScript -->
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        
+        const SUPABASE_URL = 'https://byowdkmuurbrvkuydhml.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5b3dka211dXJicnZrdXlkaG1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4MDc5NzUsImV4cCI6MjA4MzM4Mzk3NX0.mcBSPRA-o-1WGd2t0jJ1jwONUUiJ9kf1dk55aJS9nJQ';
+        
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+        
+        let supabaseClient = null;
+        let currentPanel = 'habits';
+        let appState = {
+            habits: [],
+            tasks: [],
+            goals: [],
+            categories: [],
+            habitCompletions: [],
+            isLoading: true,
+            error: null
+        };
+        
+        // ============================================
+        // SUPABASE INITIALIZATION
+        // ============================================
+        
+        async function initializeSupabase() {
+            try {
+                // Initialize Supabase client
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                console.log('✅ Supabase client initialized');
+                
+                // Test connection by fetching one category
+                const { data, error } = await supabaseClient
+                    .from('categories')
+                    .select('*')
+                    .limit(1)
+                    .single();
+                
+                if (error) {
+                    throw new Error(`Database connection failed: ${error.message}`);
+                }
+                
+                console.log('✅ Database connection successful:', data);
+                
+                // Update connection status
+                updateConnectionStatus(true);
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Supabase initialization failed:', error);
+                updateConnectionStatus(false, error.message);
+                showToast('Failed to connect to database', 'error');
+                return false;
+            }
+        }
+        
+        // ============================================
+        // UI HELPER FUNCTIONS
+        // ============================================
+        
+        function updateConnectionStatus(connected, errorMsg = '') {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            
+            if (connected) {
+                statusDot.className = 'w-2 h-2 rounded-full bg-success';
+                statusText.textContent = 'Connected';
+            } else {
+                statusDot.className = 'w-2 h-2 rounded-full bg-danger';
+                statusText.textContent = errorMsg ? 'Error' : 'Disconnected';
+                if (errorMsg) {
+                    console.error('Connection error:', errorMsg);
+                }
+            }
+        }
+        
+        function switchPanel(panelName) {
+            // Hide all panels
+            const panels = document.querySelectorAll('.panel');
+            panels.forEach(panel => panel.classList.add('hidden'));
+            
+            // Show selected panel
+            const targetPanel = document.getElementById(`${panelName}-panel`);
+            if (targetPanel) {
+                targetPanel.classList.remove('hidden');
+            }
+            
+            // Update navigation buttons
+            const navButtons = document.querySelectorAll('.nav-btn');
+            navButtons.forEach(btn => {
+                if (btn.dataset.panel === panelName) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Update current panel
+            currentPanel = panelName;
+            
+            console.log(`Switched to ${panelName} panel`);
+        }
+        
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.style.display = 'none';
+            
+            // Show the first panel (habits)
+            switchPanel('habits');
+        }
+        
+        // ============================================
+        // DATA FETCHING FUNCTIONS
+        // ============================================
+        
+        async function fetchInitialData() {
+            try {
+                console.log('📥 Fetching initial data...');
+                
+                // Fetch all categories
+                const { data: categories, error: catError } = await supabaseClient
+                    .from('categories')
+                    .select('*')
+                    .order('name');
+                
+                if (catError) throw catError;
+                appState.categories = categories;
+                console.log(`✅ Loaded ${categories.length} categories`);
+                
+                // Fetch all habits with streaks
+                const { data: habits, error: habitError } = await supabaseClient
+                    .from('habits')
+                    .select('*')
+                    .eq('archived', false)
+                    .order('user_order');
+                
+                if (habitError) throw habitError;
+                appState.habits = habits;
+                console.log(`✅ Loaded ${habits.length} habits`);
+                
+                // Fetch all active tasks with relations
+                const { data: tasks, error: taskError } = await supabaseClient
+                    .from('tasks')
+                    .select(`
+                        *,
+                        category:categories(id, name, color_hex),
+                        goal:goals(id, name)
+                    `)
+                    .eq('status', 'active')
+                    .order('due_date');
+                
+                if (taskError) throw taskError;
+                appState.tasks = tasks;
+                console.log(`✅ Loaded ${tasks.length} tasks`);
+                
+                // Fetch all active goals with progress
+                const { data: goals, error: goalError } = await supabaseClient
+                    .from('goals')
+                    .select('*')
+                    .eq('status', 'active')
+                    .order('due_date');
+                
+                if (goalError) throw goalError;
+                appState.goals = goals;
+                console.log(`✅ Loaded ${goals.length} goals`);
+                
+                // Fetch today's habit completions
+                const today = new Date().toISOString().split('T')[0];
+                const { data: completions, error: compError } = await supabaseClient
+                    .from('habit_completions')
+                    .select('*')
+                    .eq('completion_date', today);
+                
+                if (compError) throw compError;
+                appState.habitCompletions = completions;
+                console.log(`✅ Loaded ${completions.length} habit completions for today`);
+                
+                appState.isLoading = false;
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Error fetching initial data:', error);
+                appState.error = error.message;
+                showToast('Failed to load data', 'error');
+                return false;
+            }
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        async function initApp() {
+            console.log('🚀 Initializing Productivity Hub...');
+            
+            // Step 1: Initialize Supabase
+            const supabaseReady = await initializeSupabase();
+            if (!supabaseReady) {
+                hideLoadingScreen();
+                document.getElementById('habits-panel').innerHTML = `
+                    <div class="text-center text-danger py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p class="font-bold">Failed to connect to database</p>
+                        <p class="text-sm mt-2">Please check your internet connection</p>
+                        <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg">
+                            Retry
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Step 2: Fetch initial data
+            const dataLoaded = await fetchInitialData();
+            if (!dataLoaded) {
+                hideLoadingScreen();
+                document.getElementById('habits-panel').innerHTML = `
+                    <div class="text-center text-danger py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p class="font-bold">Failed to load data</p>
+                        <p class="text-sm mt-2">${appState.error || 'Unknown error'}</p>
+                        <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg">
+                            Retry
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Step 3: Hide loading screen and show first panel
+            hideLoadingScreen();
+            
+            // Step 4: Show success message
+            showToast('✨ All data loaded successfully!', 'success');
+            
+            console.log('✅ App initialization complete!');
+            console.log('📊 App State:', appState);
+        }
+        
+        // Start the app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
