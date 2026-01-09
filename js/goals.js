@@ -5,7 +5,6 @@
 // Drag-and-drop state for goals
 let draggedGoalId = null;
 
-
 // Calculate goal progress from linked tasks
 function calculateGoalProgress(goalId) {
     const linkedTasks = appState.tasks.filter(t => t.goal_id === goalId);
@@ -23,12 +22,6 @@ function getGoalTaskCounts(goalId) {
     const completed = linkedTasks.filter(t => t.is_completed).length;
     return { total: linkedTasks.length, completed };
 }
-
-===========================================
-GOALS.JS - COMPACT VERSION WITH CATEGORIES
-===========================================
-
-REPLACE THE ENTIRE renderGoals() function (starts around line 38) with this:
 
 // Render all goals
 async function renderGoals() {
@@ -150,7 +143,6 @@ async function renderGoals() {
         `;
     }).join('');
 }
-
 
 // Format goal due date with smart text
 function formatGoalDueDate(dueDate) {
@@ -450,6 +442,5 @@ async function reorderGoals(draggedId, targetId) {
     } catch (error) {
         console.error('Error reordering goals:', error);
         showToast('Failed to save new order', 'error');
-        // Could implement rollback here if needed
     }
 }
