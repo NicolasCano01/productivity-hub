@@ -1,29 +1,23 @@
 // ============================================
-// PRODUCTIVITY HUB - GOALS PANEL (FIXED)
+// PRODUCTIVITY HUB - GOALS PANEL (COMPACT V2)
 // ============================================
 
-// Drag-and-drop state for goals
 let draggedGoalId = null;
 
-// Calculate goal progress from linked tasks
 function calculateGoalProgress(goalId) {
     const linkedTasks = appState.tasks.filter(t => t.goal_id === goalId);
     const totalTasks = linkedTasks.length;
-    
     if (totalTasks === 0) return 0;
-    
     const completedTasks = linkedTasks.filter(t => t.is_completed).length;
     return Math.round((completedTasks / totalTasks) * 100);
 }
 
-// Get task counts for a goal
 function getGoalTaskCounts(goalId) {
     const linkedTasks = appState.tasks.filter(t => t.goal_id === goalId);
     const completed = linkedTasks.filter(t => t.is_completed).length;
-    return { total: linkedTasks.length, completed };
+    return { total: linkedTasks.length, completed: completed };
 }
 
-// Render all goals
 async function renderGoals() {
     const goalsList = document.getElementById('goals-list');
     if (!goalsList) return;
@@ -39,13 +33,8 @@ async function renderGoals() {
     
     goalsList.innerHTML = activeGoals.map(goal => {
         const categoryMap = {
-            'travel': 'Travel',
-            'personal': 'Personal',
-            'career': 'Work',
-            'health': 'Health',
-            'financial': 'Finance',
-            'learning': 'Learning',
-            'other': 'Other'
+            'travel': 'Travel', 'personal': 'Personal', 'career': 'Work',
+            'health': 'Health', 'financial': 'Finance', 'learning': 'Learning', 'other': 'Other'
         };
         
         const categoryName = categoryMap[goal.goal_type] || 'Other';
@@ -56,47 +45,37 @@ async function renderGoals() {
         const progress = calculateGoalProgress(goal.id);
         const dueDate = formatGoalDueDate(goal.due_date);
         const hasDeadline = goal.due_date !== null;
+        const emoji = goal.emoji || '';
         
-        return '<div class="goal-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" data-goal-id="' + goal.id + '" draggable="true" ondragstart="handleGoalDragStart(event, \'' + goal.id + '\')" ondragover="handleGoalDragOver(event)" ondrop="handleGoalDrop(event, \'' + goal.id + '\')" ondragend="handleGoalDragEnd(event)"><div style="height: 3px; background-color: ' + goalColor + ';"></div><div class="p-2.5"><div class="flex items-start justify-between gap-2 mb-1.5"><div class="flex-1 min-w-0"><div class="flex items-center gap-1.5 mb-0.5"><h3 class="font-semibold text-gray-800 text-sm leading-tight">' + escapeHtml(goal.name) + '</h3><span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ' + goalColor + '20; color: ' + goalColor + ';">' + goal.goal_type + '</span></div>' + (goal.description ? '<p class="text-xs text-gray-600 line-clamp-1">' + escapeHtml(goal.description) + '</p>' : '') + '</div><button onclick="openGoalModal(\'' + goal.id + '\')" class="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1"><i class="fas fa-ellipsis-h text-sm"></i></button></div><div class="mb-1.5"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-medium text-gray-600">Progress</span><span class="text-xs font-bold" style="color: ' + goalColor + ';">' + progress + '%</span></div><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="h-full rounded-full transition-all duration-300" style="width: ' + progress + '%; background-color: ' + goalColor + ';"></div></div></div><div class="flex items-center justify-between text-xs"><div class="flex items-center gap-2">' + (taskCounts.total > 0 ? '<span class="flex items-center gap-1 text-gray-600"><i class="fas fa-tasks"></i>' + taskCounts.completed + '/' + taskCounts.total + '</span>' : '<span class="text-gray-400 text-xs">No tasks</span>') + '</div><div class="flex items-center gap-2">' + (hasDeadline ? '<span class="flex items-center gap-1 ' + (dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-600') + '"><i class="fas fa-clock text-xs"></i>' + dueDate.text + '</span>' : '<span class="flex items-center gap-1 text-gray-500"><i class="fas fa-infinity text-xs"></i></span>') + (progress >= 100 ? '<button onclick="markGoalComplete(\'' + goal.id + '\')" class="text-success hover:text-green-700 ml-1" title="Mark as complete"><i class="fas fa-check-circle"></i></button>' : '') + '</div></div></div></div>';
+        return '<div class="goal-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow" data-goal-id="' + goal.id + '" draggable="true" ondragstart="handleGoalDragStart(event, \'' + goal.id + '\')" ondragover="handleGoalDragOver(event)" ondrop="handleGoalDrop(event, \'' + goal.id + '\')" ondragend="handleGoalDragEnd(event)" onclick="openGoalModal(\'' + goal.id + '\')"><div style="height: 3px; background-color: ' + goalColor + ';"></div><div class="p-2"><div class="flex items-start justify-between gap-2 mb-1"><div class="flex-1 min-w-0"><div class="flex items-center gap-1 mb-0.5">' + (emoji ? '<span class="text-lg">' + emoji + '</span>' : '') + '<h3 class="font-semibold text-gray-800 text-sm leading-tight">' + escapeHtml(goal.name) + '</h3><span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ' + goalColor + '20; color: ' + goalColor + ';">' + goal.goal_type + '</span></div>' + (goal.description ? '<p class="text-xs text-gray-500 line-clamp-1">' + escapeHtml(goal.description) + '</p>' : '') + '</div></div><div class="mb-1"><div class="flex items-center justify-between mb-0.5"><span class="text-xs text-gray-500">Progress</span><span class="text-xs font-bold" style="color: ' + goalColor + ';">' + progress + '%</span></div><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="h-full rounded-full transition-all duration-300" style="width: ' + progress + '%; background-color: ' + goalColor + ';"></div></div></div><div class="flex items-center justify-between text-xs"><div class="flex items-center gap-2">' + (taskCounts.total > 0 ? '<span class="flex items-center gap-1 text-gray-500"><i class="fas fa-tasks text-xs"></i><span>' + taskCounts.completed + '/' + taskCounts.total + '</span></span>' : '<span class="text-gray-400">No tasks</span>') + '</div><div class="flex items-center gap-2">' + (hasDeadline ? '<span class="flex items-center gap-1 ' + (dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-500') + '"><i class="fas fa-clock text-xs"></i><span>' + dueDate.text + '</span></span>' : '<span class="flex items-center gap-1 text-gray-400"><i class="fas fa-infinity text-xs"></i></span>') + (progress >= 100 ? '<button onclick="event.stopPropagation(); markGoalComplete(\'' + goal.id + '\');" class="text-success hover:text-green-700 ml-1" title="Mark as complete"><i class="fas fa-check-circle"></i></button>' : '') + '</div></div></div></div>';
     }).join('');
 }
 
 function formatGoalDueDate(dueDate) {
     if (!dueDate) return { text: 'No date', isOverdue: false };
-    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
-    
     const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
     const isOverdue = diffDays < 0;
-    
     let text;
     if (diffDays === 0) text = 'Today';
     else if (diffDays === 1) text = 'Tomorrow';
     else if (diffDays === -1) text = 'Yesterday';
-    else if (diffDays > 0 && diffDays <= 30) text = diffDays + ' days';
-    else if (diffDays < 0) text = Math.abs(diffDays) + 'd overdue';
+    else if (diffDays > 0 && diffDays <= 30) text = diffDays + 'd';
+    else if (diffDays < 0) text = Math.abs(diffDays) + 'd ago';
     else text = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    
     return { text: text, isOverdue: isOverdue };
 }
 
 async function markGoalComplete(goalId) {
     if (!confirm('Mark this goal as complete? It will be archived.')) return;
-    
     try {
-        const { error } = await supabaseClient
-            .from('goals')
-            .update({ status: 'archived' })
-            .eq('id', goalId);
-        
+        const { error } = await supabaseClient.from('goals').update({ status: 'archived' }).eq('id', goalId);
         if (error) throw error;
-        
         const goal = appState.goals.find(g => g.id === goalId);
         if (goal) goal.status = 'archived';
-        
         renderGoals();
         showToast('🎉 Goal completed! Great work!', 'success');
     } catch (error) {
@@ -125,25 +104,88 @@ function openGoalModal(goalId) {
         document.getElementById('goal-description').value = goal.description || '';
         document.getElementById('goal-type').value = goal.goal_type || 'other';
         document.getElementById('goal-due-date').value = goal.due_date || '';
+        document.getElementById('goal-emoji').value = goal.emoji || '';
         
-        const taskCounts = getGoalTaskCounts(goal.id);
+        const emojiDisplay = document.getElementById('selected-goal-emoji');
+        if (goal.emoji) {
+            emojiDisplay.textContent = goal.emoji;
+            emojiDisplay.classList.remove('no-emoji');
+        } else {
+            emojiDisplay.textContent = '';
+            emojiDisplay.classList.add('no-emoji');
+        }
+        
+        const linkedTasks = appState.tasks.filter(t => t.goal_id === goal.id);
         const taskInfo = document.getElementById('goal-task-info');
         if (taskInfo) {
-            if (taskCounts.total > 0) {
-                taskInfo.innerHTML = '<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><div class="flex items-center gap-2 text-sm"><i class="fas fa-info-circle text-primary"></i><span class="font-semibold">' + taskCounts.completed + '/' + taskCounts.total + ' tasks completed</span></div></div>';
+            if (linkedTasks.length > 0) {
+                const tasksList = linkedTasks.map(task => {
+                    const isCompleted = task.is_completed;
+                    return '<div class="flex items-center gap-2 py-1.5 ' + (isCompleted ? 'opacity-60' : '') + '"><i class="fas fa-' + (isCompleted ? 'check-circle text-success' : 'circle text-gray-300') + ' text-sm"></i><span class="flex-1 text-sm ' + (isCompleted ? 'line-through text-gray-500' : 'text-gray-700') + '">' + escapeHtml(task.title) + '</span></div>';
+                }).join('');
+                taskInfo.innerHTML = '<div class="p-2 bg-blue-50 border border-blue-200 rounded-lg"><div class="flex items-center gap-1.5 mb-2"><i class="fas fa-tasks text-primary text-sm"></i><span class="font-semibold text-sm">Linked Tasks (' + linkedTasks.filter(t => t.is_completed).length + '/' + linkedTasks.length + ')</span></div><div class="max-h-32 overflow-y-auto custom-scrollbar">' + tasksList + '</div></div>';
             } else {
-                taskInfo.innerHTML = '<div class="p-3 bg-gray-50 border border-gray-200 rounded-lg"><div class="flex items-center gap-2 text-sm text-gray-600"><i class="fas fa-link text-gray-400"></i><span>No tasks linked to this goal yet</span></div></div>';
+                taskInfo.innerHTML = '<div class="p-2 bg-gray-50 border border-gray-200 rounded-lg"><div class="flex items-center gap-1.5 text-sm text-gray-600"><i class="fas fa-link text-gray-400"></i><span>No tasks linked yet</span></div></div>';
             }
         }
     } else {
         modalTitle.textContent = 'Add Goal';
         deleteBtn.classList.add('hidden');
         form.reset();
+        const emojiDisplay = document.getElementById('selected-goal-emoji');
+        emojiDisplay.textContent = '';
+        emojiDisplay.classList.add('no-emoji');
         const taskInfo = document.getElementById('goal-task-info');
         if (taskInfo) taskInfo.innerHTML = '';
     }
     
     modal.classList.remove('hidden');
+}
+
+function toggleGoalEmojiPicker() {
+    const picker = document.getElementById('goal-emoji-picker');
+    if (picker.classList.contains('hidden')) {
+        picker.classList.remove('hidden');
+        if (picker.children.length === 0) {
+            loadGoalEmojiPicker();
+        }
+    } else {
+        picker.classList.add('hidden');
+    }
+}
+
+function loadGoalEmojiPicker() {
+    const container = document.getElementById('goal-emoji-categories');
+    const categories = {
+        'Targets': ['🎯', '🏆', '⭐', '🎖️', '🥇', '🥈', '🥉', '👑'],
+        'Activities': ['💼', '📚', '🏋️', '🧘', '✈️', '🏠', '💰', '🎨', '🎵', '🎮'],
+        'Symbols': ['✨', '🔥', '💪', '🚀', '💡', '🎉', '⚡', '🌟', '💯', '🎪']
+    };
+    
+    let html = '';
+    for (const cat in categories) {
+        html += '<div class="mb-2"><div class="text-xs font-semibold text-gray-600 mb-1">' + cat + '</div><div class="grid grid-cols-8 gap-1">';
+        categories[cat].forEach(emoji => {
+            html += '<button type="button" class="text-2xl hover:bg-gray-200 rounded p-1 transition" onclick="selectGoalEmoji(\'' + emoji + '\')">' + emoji + '</button>';
+        });
+        html += '</div></div>';
+    }
+    container.innerHTML = html;
+}
+
+function selectGoalEmoji(emoji) {
+    document.getElementById('goal-emoji').value = emoji;
+    const display = document.getElementById('selected-goal-emoji');
+    display.textContent = emoji;
+    display.classList.remove('no-emoji');
+    document.getElementById('goal-emoji-picker').classList.add('hidden');
+}
+
+function clearGoalEmoji() {
+    document.getElementById('goal-emoji').value = '';
+    const display = document.getElementById('selected-goal-emoji');
+    display.textContent = '';
+    display.classList.add('no-emoji');
 }
 
 function closeGoalModal() {
@@ -154,51 +196,36 @@ function closeGoalModal() {
 
 async function saveGoal(event) {
     event.preventDefault();
-    
     const goalData = {
         name: document.getElementById('goal-name').value.trim(),
         description: document.getElementById('goal-description').value.trim() || null,
         goal_type: document.getElementById('goal-type').value,
-        due_date: document.getElementById('goal-due-date').value || null
+        due_date: document.getElementById('goal-due-date').value || null,
+        emoji: document.getElementById('goal-emoji').value || null
     };
     
     try {
         if (editingGoalId) {
-            const { error } = await supabaseClient
-                .from('goals')
-                .update(goalData)
-                .eq('id', editingGoalId);
-            
+            const { error } = await supabaseClient.from('goals').update(goalData).eq('id', editingGoalId);
             if (error) throw error;
-            
             const goalIndex = appState.goals.findIndex(g => g.id === editingGoalId);
             if (goalIndex !== -1) {
                 appState.goals[goalIndex] = Object.assign({}, appState.goals[goalIndex], goalData);
             }
-            
             showToast('Goal updated successfully', 'success');
         } else {
             const maxOrder = Math.max(0, ...appState.goals.map(g => g.user_order || 0));
-            
-            const { data, error } = await supabaseClient
-                .from('goals')
-                .insert([Object.assign({}, goalData, {
-                    status: 'active',
-                    user_order: maxOrder + 1,
-                    created_at: new Date().toISOString()
-                })])
-                .select()
-                .single();
-            
+            const { data, error } = await supabaseClient.from('goals').insert([Object.assign({}, goalData, {
+                status: 'active',
+                user_order: maxOrder + 1,
+                created_at: new Date().toISOString()
+            })]).select().single();
             if (error) throw error;
-            
             appState.goals.push(data);
             showToast('Goal created successfully', 'success');
         }
-        
         renderGoals();
         closeGoalModal();
-        
     } catch (error) {
         console.error('Error saving goal:', error);
         showToast('Failed to save goal', 'error');
@@ -207,36 +234,22 @@ async function saveGoal(event) {
 
 async function deleteGoal() {
     if (!editingGoalId) return;
-    
     const taskCounts = getGoalTaskCounts(editingGoalId);
-    
     let confirmMsg = 'Are you sure you want to delete this goal?';
     if (taskCounts.total > 0) {
         confirmMsg = 'This goal has ' + taskCounts.total + ' linked task(s). Deleting the goal will unlink these tasks. Continue?';
     }
-    
     if (!confirm(confirmMsg)) return;
-    
     try {
-        const { error } = await supabaseClient
-            .from('goals')
-            .delete()
-            .eq('id', editingGoalId);
-        
+        const { error } = await supabaseClient.from('goals').delete().eq('id', editingGoalId);
         if (error) throw error;
-        
         appState.goals = appState.goals.filter(g => g.id !== editingGoalId);
-        
         appState.tasks.forEach(task => {
-            if (task.goal_id === editingGoalId) {
-                task.goal_id = null;
-            }
+            if (task.goal_id === editingGoalId) task.goal_id = null;
         });
-        
         renderGoals();
         closeGoalModal();
         showToast('Goal deleted successfully', 'success');
-        
     } catch (error) {
         console.error('Error deleting goal:', error);
         showToast('Failed to delete goal', 'error');
@@ -252,7 +265,6 @@ function handleGoalDragStart(event, goalId) {
 function handleGoalDragOver(event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    
     const targetCard = event.target.closest('.goal-card');
     if (targetCard && targetCard.dataset.goalId !== draggedGoalId) {
         targetCard.style.borderTop = '2px solid #3B82F6';
@@ -261,12 +273,8 @@ function handleGoalDragOver(event) {
 
 function handleGoalDrop(event, targetGoalId) {
     event.preventDefault();
-    
     const targetCard = event.target.closest('.goal-card');
-    if (targetCard) {
-        targetCard.style.borderTop = '';
-    }
-    
+    if (targetCard) targetCard.style.borderTop = '';
     if (draggedGoalId && draggedGoalId !== targetGoalId) {
         reorderGoals(draggedGoalId, targetGoalId);
     }
@@ -281,32 +289,20 @@ function handleGoalDragEnd(event) {
 }
 
 async function reorderGoals(draggedId, targetId) {
-    const activeGoals = appState.goals
-        .filter(g => g.status === 'active')
-        .sort((a, b) => (a.user_order || 0) - (b.user_order || 0));
-    
+    const activeGoals = appState.goals.filter(g => g.status === 'active').sort((a, b) => (a.user_order || 0) - (b.user_order || 0));
     const draggedIndex = activeGoals.findIndex(g => g.id === draggedId);
     const targetIndex = activeGoals.findIndex(g => g.id === targetId);
-    
     if (draggedIndex === -1 || targetIndex === -1) return;
-    
     const draggedGoal = activeGoals.splice(draggedIndex, 1)[0];
     activeGoals.splice(targetIndex, 0, draggedGoal);
-    
     activeGoals.forEach((goal, index) => {
         goal.user_order = index + 1;
     });
-    
     renderGoals();
-    
     try {
         for (let i = 0; i < activeGoals.length; i++) {
             const goal = activeGoals[i];
-            const { error } = await supabaseClient
-                .from('goals')
-                .update({ user_order: goal.user_order })
-                .eq('id', goal.id);
-            
+            const { error } = await supabaseClient.from('goals').update({ user_order: goal.user_order }).eq('id', goal.id);
             if (error) throw error;
         }
     } catch (error) {
