@@ -144,9 +144,13 @@ function openGoalModal(goalId) {
 
 function toggleGoalEmojiPicker() {
     const picker = document.getElementById('goal-emoji-picker');
+    if (!picker) return;
+    
     if (picker.classList.contains('hidden')) {
         picker.classList.remove('hidden');
-        if (picker.children.length === 0) {
+        // Check if the categories container is empty instead
+        const container = document.getElementById('goal-emoji-categories');
+        if (container && container.innerHTML.trim() === '') {
             loadGoalEmojiPicker();
         }
     } else {
