@@ -43,6 +43,7 @@ async function initApp() {
     // Step 3: Render initial views
     renderHabits();
     renderTasks();
+    renderGoals();
     
     // Step 4: Hide loading screen and show first panel
     hideLoadingScreen();
