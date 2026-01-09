@@ -11,10 +11,9 @@ let currentTaskView = 'all'; // 'all', 'overdue', 'upcoming'
 
 // Modal State
 let editingHabitId = null;
-let editingHabitId = null;
 let editingTaskId = null;
 let editingGoalId = null;
-let editingCategoryId = null;
+let editingCategoryId = null; 
 
 // Application State
 const appState = {
