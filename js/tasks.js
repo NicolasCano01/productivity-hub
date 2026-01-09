@@ -225,8 +225,17 @@ function renderTasks() {
         
         tasksList.innerHTML = html;
     } else {
-        // No grouping for All and Completed views
-        tasksList.innerHTML = `<div class="space-y-2">${filtered.map(task => renderTaskCard(task)).join('')}</div>`;
+    // Sort completed tasks by completion date (most recent first)
+    if (currentTaskView === 'completed') {
+        filtered.sort((a, b) => {
+            const dateA = new Date(a.completed_at || 0);
+            const dateB = new Date(b.completed_at || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+    }
+    
+    // No grouping for All and Completed views
+    tasksList.innerHTML = `<div class="space-y-2">${filtered.map(task => renderTaskCard(task)).join('')}</div>`;
     }
 }
 
