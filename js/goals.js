@@ -5,16 +5,6 @@
 // Drag-and-drop state for goals
 let draggedGoalId = null;
 
-// Goal type colors (since goals don't have category_id)
-const GOAL_TYPE_COLORS = {
-    'travel': '#EC4899',      // Pink
-    'personal': '#10B981',    // Green
-    'career': '#3B82F6',      // Blue
-    'health': '#EF4444',      // Red
-    'financial': '#8B5CF6',   // Purple
-    'learning': '#F59E0B',    // Orange
-    'other': '#6B7280'        // Gray
-};
 
 // Calculate goal progress from linked tasks
 function calculateGoalProgress(goalId) {
@@ -33,6 +23,12 @@ function getGoalTaskCounts(goalId) {
     const completed = linkedTasks.filter(t => t.is_completed).length;
     return { total: linkedTasks.length, completed };
 }
+
+===========================================
+GOALS.JS - COMPACT VERSION WITH CATEGORIES
+===========================================
+
+REPLACE THE ENTIRE renderGoals() function (starts around line 38) with this:
 
 // Render all goals
 async function renderGoals() {
@@ -56,7 +52,21 @@ async function renderGoals() {
     }
     
     goalsList.innerHTML = activeGoals.map(goal => {
-        const goalColor = GOAL_TYPE_COLORS[goal.goal_type] || GOAL_TYPE_COLORS['other'];
+        // Map goal_type to category for color
+        const categoryMap = {
+            'travel': 'Travel',
+            'personal': 'Personal',
+            'career': 'Work',
+            'health': 'Health',
+            'financial': 'Finance',
+            'learning': 'Learning',
+            'other': 'Other'
+        };
+        
+        const categoryName = categoryMap[goal.goal_type] || 'Other';
+        const category = appState.categories.find(c => c.name === categoryName);
+        const goalColor = category ? category.color_hex : '#6B7280';
+        
         const taskCounts = getGoalTaskCounts(goal.id);
         const progress = calculateGoalProgress(goal.id);
         const dueDate = formatGoalDueDate(goal.due_date);
@@ -71,33 +81,33 @@ async function renderGoals() {
                  ondrop="handleGoalDrop(event, '${goal.id}')"
                  ondragend="handleGoalDragEnd(event)">
                 
-                <!-- Goal Type Color Bar -->
-                <div style="height: 4px; background-color: ${goalColor};"></div>
+                <!-- Category Color Bar -->
+                <div style="height: 3px; background-color: ${goalColor};"></div>
                 
                 <!-- Goal Content -->
-                <div class="p-3">
-                    <div class="flex items-start justify-between gap-3 mb-2">
+                <div class="p-2.5">
+                    <div class="flex items-start justify-between gap-2 mb-1.5">
                         <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                                <h3 class="font-semibold text-gray-800 text-base leading-tight">${escapeHtml(goal.name)}</h3>
-                                <span class="text-xs px-2 py-0.5 rounded-full" style="background-color: ${goalColor}20; color: ${goalColor};">
+                            <div class="flex items-center gap-1.5 mb-0.5">
+                                <h3 class="font-semibold text-gray-800 text-sm leading-tight">${escapeHtml(goal.name)}</h3>
+                                <span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ${goalColor}20; color: ${goalColor};">
                                     ${goal.goal_type}
                                 </span>
                             </div>
-                            ${goal.description ? `<p class="text-sm text-gray-600 line-clamp-2">${escapeHtml(goal.description)}</p>` : ''}
+                            ${goal.description ? `<p class="text-xs text-gray-600 line-clamp-1">${escapeHtml(goal.description)}</p>` : ''}
                         </div>
-                        <button onclick="openGoalModal('${goal.id}')" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
-                            <i class="fas fa-ellipsis-h"></i>
+                        <button onclick="openGoalModal('${goal.id}')" class="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1">
+                            <i class="fas fa-ellipsis-h text-sm"></i>
                         </button>
                     </div>
                     
                     <!-- Progress Bar -->
-                    <div class="mb-2">
-                        <div class="flex items-center justify-between mb-1">
+                    <div class="mb-1.5">
+                        <div class="flex items-center justify-between mb-0.5">
                             <span class="text-xs font-medium text-gray-600">Progress</span>
                             <span class="text-xs font-bold" style="color: ${goalColor};">${progress}%</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div class="h-full rounded-full transition-all duration-300" 
                                  style="width: ${progress}%; background-color: ${goalColor};"></div>
                         </div>
@@ -105,33 +115,32 @@ async function renderGoals() {
                     
                     <!-- Meta Info -->
                     <div class="flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                             ${taskCounts.total > 0 ? `
                                 <span class="flex items-center gap-1 text-gray-600">
                                     <i class="fas fa-tasks"></i>
-                                    ${taskCounts.completed}/${taskCounts.total} tasks
+                                    ${taskCounts.completed}/${taskCounts.total}
                                 </span>
                             ` : `
-                                <span class="text-gray-400 italic">No tasks linked</span>
+                                <span class="text-gray-400 text-xs">No tasks</span>
                             `}
                         </div>
                         <div class="flex items-center gap-2">
                             ${hasDeadline ? `
                                 <span class="flex items-center gap-1 ${dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-600'}">
-                                    <i class="fas fa-clock"></i>
+                                    <i class="fas fa-clock text-xs"></i>
                                     ${dueDate.text}
                                 </span>
                             ` : `
                                 <span class="flex items-center gap-1 text-gray-500">
-                                    <i class="fas fa-infinity"></i>
-                                    Open-ended
+                                    <i class="fas fa-infinity text-xs"></i>
                                 </span>
                             `}
                             ${progress >= 100 ? `
                                 <button onclick="markGoalComplete('${goal.id}')" 
-                                        class="text-success hover:text-green-700"
+                                        class="text-success hover:text-green-700 ml-1"
                                         title="Mark as complete">
-                                    <i class="fas fa-check-circle text-lg"></i>
+                                    <i class="fas fa-check-circle"></i>
                                 </button>
                             ` : ''}
                         </div>
@@ -141,6 +150,7 @@ async function renderGoals() {
         `;
     }).join('');
 }
+
 
 // Format goal due date with smart text
 function formatGoalDueDate(dueDate) {
