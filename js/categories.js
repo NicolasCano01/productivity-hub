@@ -2,7 +2,6 @@
 // PRODUCTIVITY HUB - CATEGORY MANAGEMENT
 // ============================================
 
-let editingCategoryId = null;
 
 // Available colors for categories
 const CATEGORY_COLORS = [
