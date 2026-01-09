@@ -1,9 +1,38 @@
 // ============================================
-// PRODUCTIVITY HUB - GOALS PANEL
+// PRODUCTIVITY HUB - GOALS PANEL (FIXED)
 // ============================================
 
 // Drag-and-drop state for goals
 let draggedGoalId = null;
+
+// Goal type colors (since goals don't have category_id)
+const GOAL_TYPE_COLORS = {
+    'travel': '#EC4899',      // Pink
+    'personal': '#10B981',    // Green
+    'career': '#3B82F6',      // Blue
+    'health': '#EF4444',      // Red
+    'financial': '#8B5CF6',   // Purple
+    'learning': '#F59E0B',    // Orange
+    'other': '#6B7280'        // Gray
+};
+
+// Calculate goal progress from linked tasks
+function calculateGoalProgress(goalId) {
+    const linkedTasks = appState.tasks.filter(t => t.goal_id === goalId);
+    const totalTasks = linkedTasks.length;
+    
+    if (totalTasks === 0) return 0;
+    
+    const completedTasks = linkedTasks.filter(t => t.is_completed).length;
+    return Math.round((completedTasks / totalTasks) * 100);
+}
+
+// Get task counts for a goal
+function getGoalTaskCounts(goalId) {
+    const linkedTasks = appState.tasks.filter(t => t.goal_id === goalId);
+    const completed = linkedTasks.filter(t => t.is_completed).length;
+    return { total: linkedTasks.length, completed };
+}
 
 // Render all goals
 async function renderGoals() {
@@ -11,7 +40,7 @@ async function renderGoals() {
     if (!goalsList) return;
     
     // Get active goals sorted by user_order
-    const activeGoals = appState.goals
+    let activeGoals = appState.goals
         .filter(g => g.status === 'active')
         .sort((a, b) => (a.user_order || 0) - (b.user_order || 0));
     
@@ -26,20 +55,12 @@ async function renderGoals() {
         return;
     }
     
-    // Get task counts for each goal
-    const taskCounts = {};
-    appState.tasks.forEach(task => {
-        if (task.goal_id) {
-            taskCounts[task.goal_id] = (taskCounts[task.goal_id] || 0) + 1;
-        }
-    });
-    
     goalsList.innerHTML = activeGoals.map(goal => {
-        const category = appState.categories.find(c => c.id === goal.category_id);
-        const categoryColor = category ? category.color : '#9CA3AF';
-        const taskCount = taskCounts[goal.id] || 0;
+        const goalColor = GOAL_TYPE_COLORS[goal.goal_type] || GOAL_TYPE_COLORS['other'];
+        const taskCounts = getGoalTaskCounts(goal.id);
+        const progress = calculateGoalProgress(goal.id);
         const dueDate = formatGoalDueDate(goal.due_date);
-        const progress = goal.progress_percentage || 0;
+        const hasDeadline = goal.due_date !== null;
         
         return `
             <div class="goal-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
@@ -50,14 +71,19 @@ async function renderGoals() {
                  ondrop="handleGoalDrop(event, '${goal.id}')"
                  ondragend="handleGoalDragEnd(event)">
                 
-                <!-- Category Color Bar -->
-                <div style="height: 4px; background-color: ${categoryColor};"></div>
+                <!-- Goal Type Color Bar -->
+                <div style="height: 4px; background-color: ${goalColor};"></div>
                 
                 <!-- Goal Content -->
                 <div class="p-3">
                     <div class="flex items-start justify-between gap-3 mb-2">
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-semibold text-gray-800 text-base leading-tight mb-1">${escapeHtml(goal.name)}</h3>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-semibold text-gray-800 text-base leading-tight">${escapeHtml(goal.name)}</h3>
+                                <span class="text-xs px-2 py-0.5 rounded-full" style="background-color: ${goalColor}20; color: ${goalColor};">
+                                    ${goal.goal_type}
+                                </span>
+                            </div>
                             ${goal.description ? `<p class="text-sm text-gray-600 line-clamp-2">${escapeHtml(goal.description)}</p>` : ''}
                         </div>
                         <button onclick="openGoalModal('${goal.id}')" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
@@ -69,37 +95,29 @@ async function renderGoals() {
                     <div class="mb-2">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-xs font-medium text-gray-600">Progress</span>
-                            <div class="flex items-center gap-2">
-                                <button onclick="adjustProgress('${goal.id}', -10)" class="text-gray-400 hover:text-primary text-xs px-1">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <span class="text-xs font-bold text-primary">${progress}%</span>
-                                <button onclick="adjustProgress('${goal.id}', 10)" class="text-gray-400 hover:text-primary text-xs px-1">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
+                            <span class="text-xs font-bold" style="color: ${goalColor};">${progress}%</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div class="h-full bg-primary rounded-full transition-all duration-300" 
-                                 style="width: ${progress}%"></div>
+                            <div class="h-full rounded-full transition-all duration-300" 
+                                 style="width: ${progress}%; background-color: ${goalColor};"></div>
                         </div>
                     </div>
                     
                     <!-- Meta Info -->
                     <div class="flex items-center justify-between text-xs">
                         <div class="flex items-center gap-3">
-                            ${category ? `<span class="flex items-center gap-1 text-gray-600">
-                                <span class="w-2 h-2 rounded-full" style="background-color: ${categoryColor};"></span>
-                                ${escapeHtml(category.name)}
-                            </span>` : ''}
-                            ${taskCount > 0 ? `<span class="flex items-center gap-1 text-gray-600">
-                                <i class="fas fa-tasks"></i>
-                                ${taskCount} task${taskCount !== 1 ? 's' : ''}
-                            </span>` : ''}
+                            ${taskCounts.total > 0 ? `
+                                <span class="flex items-center gap-1 text-gray-600">
+                                    <i class="fas fa-tasks"></i>
+                                    ${taskCounts.completed}/${taskCounts.total} tasks
+                                </span>
+                            ` : `
+                                <span class="text-gray-400 italic">No tasks linked</span>
+                            `}
                         </div>
                         <div class="flex items-center gap-2">
-                            ${goal.is_time_bound ? `
-                                <span class="flex items-center gap-1 ${dueDate.isOverdue ? 'text-danger' : 'text-gray-600'}">
+                            ${hasDeadline ? `
+                                <span class="flex items-center gap-1 ${dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-600'}">
                                     <i class="fas fa-clock"></i>
                                     ${dueDate.text}
                                 </span>
@@ -113,7 +131,7 @@ async function renderGoals() {
                                 <button onclick="markGoalComplete('${goal.id}')" 
                                         class="text-success hover:text-green-700"
                                         title="Mark as complete">
-                                    <i class="fas fa-check-circle"></i>
+                                    <i class="fas fa-check-circle text-lg"></i>
                                 </button>
                             ` : ''}
                         </div>
@@ -147,58 +165,24 @@ function formatGoalDueDate(dueDate) {
     return { text, isOverdue };
 }
 
-// Adjust goal progress
-async function adjustProgress(goalId, delta) {
-    const goal = appState.goals.find(g => g.id === goalId);
-    if (!goal) return;
-    
-    const newProgress = Math.max(0, Math.min(100, (goal.progress_percentage || 0) + delta));
-    
-    try {
-        const { error } = await supabaseClient
-            .from('goals')
-            .update({ 
-                progress_percentage: newProgress,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', goalId);
-        
-        if (error) throw error;
-        
-        // Update local state
-        goal.progress_percentage = newProgress;
-        renderGoals();
-        
-        if (newProgress === 100) {
-            showToast('🎉 Goal reached 100%! Ready to mark complete?', 'success');
-        }
-    } catch (error) {
-        console.error('Error updating progress:', error);
-        showToast('Failed to update progress', 'error');
-    }
-}
-
 // Mark goal as complete
 async function markGoalComplete(goalId) {
-    if (!confirm('Mark this goal as complete? It will be moved to archived goals.')) return;
+    if (!confirm('Mark this goal as complete? It will be archived.')) return;
     
     try {
         const { error } = await supabaseClient
             .from('goals')
             .update({ 
-                status: 'completed',
-                progress_percentage: 100,
-                updated_at: new Date().toISOString()
+                status: 'archived'
             })
             .eq('id', goalId);
         
         if (error) throw error;
         
-        // Update local state
+        // Update local state immediately (optimistic)
         const goal = appState.goals.find(g => g.id === goalId);
         if (goal) {
-            goal.status = 'completed';
-            goal.progress_percentage = 100;
+            goal.status = 'archived';
         }
         
         renderGoals();
@@ -228,23 +212,41 @@ function openGoalModal(goalId = null) {
         
         document.getElementById('goal-name').value = goal.name || '';
         document.getElementById('goal-description').value = goal.description || '';
-        document.getElementById('goal-category').value = goal.category_id || '';
+        document.getElementById('goal-type').value = goal.goal_type || 'other';
         document.getElementById('goal-due-date').value = goal.due_date || '';
-        document.getElementById('goal-is-time-bound').checked = goal.is_time_bound || false;
-        document.getElementById('goal-progress').value = goal.progress_percentage || 0;
         
-        toggleTimeBoundFields();
+        // Show task count in edit mode
+        const taskCounts = getGoalTaskCounts(goal.id);
+        const taskInfo = document.getElementById('goal-task-info');
+        if (taskInfo) {
+            if (taskCounts.total > 0) {
+                taskInfo.innerHTML = `
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div class="flex items-center gap-2 text-sm">
+                            <i class="fas fa-info-circle text-primary"></i>
+                            <span class="font-semibold">${taskCounts.completed}/${taskCounts.total} tasks completed</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                taskInfo.innerHTML = `
+                    <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div class="flex items-center gap-2 text-sm text-gray-600">
+                            <i class="fas fa-link text-gray-400"></i>
+                            <span>No tasks linked to this goal yet</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
     } else {
         // Add mode
         modalTitle.textContent = 'Add Goal';
         deleteBtn.classList.add('hidden');
         form.reset();
-        document.getElementById('goal-progress').value = 0;
-        toggleTimeBoundFields();
+        const taskInfo = document.getElementById('goal-task-info');
+        if (taskInfo) taskInfo.innerHTML = '';
     }
-    
-    // Populate category dropdown
-    populateCategoryDropdown('goal-category');
     
     modal.classList.remove('hidden');
 }
@@ -256,19 +258,6 @@ function closeGoalModal() {
     editingGoalId = null;
 }
 
-// Toggle time-bound fields
-function toggleTimeBoundFields() {
-    const isTimeBound = document.getElementById('goal-is-time-bound').checked;
-    const dueDateContainer = document.getElementById('due-date-container');
-    
-    if (isTimeBound) {
-        dueDateContainer.classList.remove('hidden');
-    } else {
-        dueDateContainer.classList.add('hidden');
-        document.getElementById('goal-due-date').value = '';
-    }
-}
-
 // Save goal
 async function saveGoal(event) {
     event.preventDefault();
@@ -276,11 +265,8 @@ async function saveGoal(event) {
     const goalData = {
         name: document.getElementById('goal-name').value.trim(),
         description: document.getElementById('goal-description').value.trim() || null,
-        category_id: document.getElementById('goal-category').value || null,
-        is_time_bound: document.getElementById('goal-is-time-bound').checked,
-        due_date: document.getElementById('goal-due-date').value || null,
-        progress_percentage: parseInt(document.getElementById('goal-progress').value) || 0,
-        updated_at: new Date().toISOString()
+        goal_type: document.getElementById('goal-type').value,
+        due_date: document.getElementById('goal-due-date').value || null
     };
     
     try {
@@ -293,7 +279,7 @@ async function saveGoal(event) {
             
             if (error) throw error;
             
-            // Update local state
+            // Update local state immediately (optimistic)
             const goalIndex = appState.goals.findIndex(g => g.id === editingGoalId);
             if (goalIndex !== -1) {
                 appState.goals[goalIndex] = { ...appState.goals[goalIndex], ...goalData };
@@ -317,6 +303,7 @@ async function saveGoal(event) {
             
             if (error) throw error;
             
+            // Add to local state immediately (optimistic)
             appState.goals.push(data);
             showToast('Goal created successfully', 'success');
         }
@@ -333,9 +320,19 @@ async function saveGoal(event) {
 // Delete goal
 async function deleteGoal() {
     if (!editingGoalId) return;
-    if (!confirm('Are you sure you want to delete this goal? This action cannot be undone.')) return;
+    
+    const goal = appState.goals.find(g => g.id === editingGoalId);
+    const taskCounts = getGoalTaskCounts(editingGoalId);
+    
+    let confirmMsg = 'Are you sure you want to delete this goal?';
+    if (taskCounts.total > 0) {
+        confirmMsg = `This goal has ${taskCounts.total} linked task(s). Deleting the goal will unlink these tasks. Continue?`;
+    }
+    
+    if (!confirm(confirmMsg)) return;
     
     try {
+        // Delete the goal (tasks will have goal_id set to NULL due to ON DELETE SET NULL)
         const { error } = await supabaseClient
             .from('goals')
             .delete()
@@ -343,8 +340,15 @@ async function deleteGoal() {
         
         if (error) throw error;
         
-        // Remove from local state
+        // Remove from local state immediately (optimistic)
         appState.goals = appState.goals.filter(g => g.id !== editingGoalId);
+        
+        // Update tasks that were linked to this goal
+        appState.tasks.forEach(task => {
+            if (task.goal_id === editingGoalId) {
+                task.goal_id = null;
+            }
+        });
         
         renderGoals();
         closeGoalModal();
@@ -356,7 +360,7 @@ async function deleteGoal() {
     }
 }
 
-// Drag-and-drop handlers
+// Drag-and-drop handlers (optimistic updates)
 function handleGoalDragStart(event, goalId) {
     draggedGoalId = goalId;
     event.target.style.opacity = '0.5';
@@ -394,7 +398,7 @@ function handleGoalDragEnd(event) {
     draggedGoalId = null;
 }
 
-// Reorder goals after drag-and-drop
+// Reorder goals with optimistic UI update
 async function reorderGoals(draggedId, targetId) {
     const activeGoals = appState.goals
         .filter(g => g.status === 'active')
@@ -405,18 +409,25 @@ async function reorderGoals(draggedId, targetId) {
     
     if (draggedIndex === -1 || targetIndex === -1) return;
     
-    // Reorder array
+    // OPTIMISTIC UPDATE: Update UI immediately
     const [draggedGoal] = activeGoals.splice(draggedIndex, 1);
     activeGoals.splice(targetIndex, 0, draggedGoal);
     
-    // Update user_order for all goals
-    const updates = activeGoals.map((goal, index) => ({
-        id: goal.id,
-        user_order: index + 1
-    }));
+    // Update user_order in local state
+    activeGoals.forEach((goal, index) => {
+        goal.user_order = index + 1;
+    });
     
+    // Render immediately
+    renderGoals();
+    
+    // Then update database in background
     try {
-        // Update in Supabase
+        const updates = activeGoals.map((goal, index) => ({
+            id: goal.id,
+            user_order: index + 1
+        }));
+        
         for (const update of updates) {
             const { error } = await supabaseClient
                 .from('goals')
@@ -424,34 +435,11 @@ async function reorderGoals(draggedId, targetId) {
                 .eq('id', update.id);
             
             if (error) throw error;
-            
-            // Update local state
-            const goal = appState.goals.find(g => g.id === update.id);
-            if (goal) goal.user_order = update.user_order;
         }
-        
-        renderGoals();
         
     } catch (error) {
         console.error('Error reordering goals:', error);
-        showToast('Failed to reorder goals', 'error');
+        showToast('Failed to save new order', 'error');
+        // Could implement rollback here if needed
     }
-}
-
-// Populate category dropdown
-function populateCategoryDropdown(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    const currentValue = select.value;
-    select.innerHTML = '<option value="">No category</option>';
-    
-    appState.categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        select.appendChild(option);
-    });
-    
-    if (currentValue) select.value = currentValue;
 }
