@@ -1,8 +1,8 @@
 // ============================================
-// PRODUCTIVITY HUB - TASKS PANEL
+// PRODUCTIVITY HUB - TASKS PANEL (ENHANCED)
 // ============================================
 
-// Switch task view (All/Overdue/Upcoming)
+// Switch task view (All/Overdue/Upcoming/Completed)
 function switchTaskView(view) {
     currentTaskView = view;
     
@@ -27,18 +27,25 @@ function getFilteredTasks() {
     // Apply view filter
     if (currentTaskView === 'overdue') {
         filtered = filtered.filter(task => {
-            if (!task.due_date || task.is_completed) return false;
+            if (task.is_completed || !task.due_date) return false;
             const dueDate = new Date(task.due_date);
             dueDate.setHours(0, 0, 0, 0);
             return dueDate < today;
         });
     } else if (currentTaskView === 'upcoming') {
+        // Include tasks with future dates OR no date (but not completed)
         filtered = filtered.filter(task => {
-            if (!task.due_date || task.is_completed) return false;
+            if (task.is_completed) return false;
+            if (!task.due_date) return true; // Include tasks with no date
             const dueDate = new Date(task.due_date);
             dueDate.setHours(0, 0, 0, 0);
             return dueDate >= today;
         });
+    } else if (currentTaskView === 'completed') {
+        filtered = filtered.filter(task => task.is_completed);
+    } else {
+        // All - show only active (not completed)
+        filtered = filtered.filter(task => !task.is_completed);
     }
     
     // Apply search filter
@@ -84,7 +91,7 @@ function getOverdueSeverity(dueDate) {
 
 // Format due date with smart text
 function formatDueDate(dueDate) {
-    if (!dueDate) return '';
+    if (!dueDate) return 'No date';
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -102,14 +109,64 @@ function formatDueDate(dueDate) {
     return due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-// Render tasks list
+// Get date group for a task
+function getDateGroup(task) {
+    if (!task.due_date) return 'later';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(task.due_date);
+    due.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'overdue';
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'tomorrow';
+    if (diffDays <= 7) return 'thisWeek';
+    return 'later';
+}
+
+// Get date group label
+function getDateGroupLabel(group, count) {
+    const labels = {
+        'overdue': `OVERDUE (${count})`,
+        'today': `TODAY (${count})`,
+        'tomorrow': `TOMORROW (${count})`,
+        'thisWeek': `THIS WEEK (${count})`,
+        'later': `LATER (${count})`
+    };
+    return labels[group] || `OTHER (${count})`;
+}
+
+// Group tasks by date
+function groupTasksByDate(tasks) {
+    const groups = {
+        'overdue': [],
+        'today': [],
+        'tomorrow': [],
+        'thisWeek': [],
+        'later': []
+    };
+    
+    tasks.forEach(task => {
+        const group = getDateGroup(task);
+        if (groups[group]) {
+            groups[group].push(task);
+        }
+    });
+    
+    return groups;
+}
+
+// Render tasks list with date grouping
 function renderTasks() {
     const tasksList = document.getElementById('tasks-list');
     const filtered = getFilteredTasks();
     
     // Update counts
-    const allTasks = appState.tasks.filter(t => !t.is_completed);
-    const overdueTasks = allTasks.filter(t => {
+    const activeTasks = appState.tasks.filter(t => !t.is_completed);
+    const overdueTasks = activeTasks.filter(t => {
         if (!t.due_date) return false;
         const dueDate = new Date(t.due_date);
         dueDate.setHours(0, 0, 0, 0);
@@ -117,18 +174,20 @@ function renderTasks() {
         today.setHours(0, 0, 0, 0);
         return dueDate < today;
     });
-    const upcomingTasks = allTasks.filter(t => {
-        if (!t.due_date) return false;
+    const upcomingTasks = activeTasks.filter(t => {
+        if (!t.due_date) return true; // Include no-date tasks
         const dueDate = new Date(t.due_date);
         dueDate.setHours(0, 0, 0, 0);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return dueDate >= today;
     });
+    const completedTasks = appState.tasks.filter(t => t.is_completed);
     
-    document.getElementById('count-all').textContent = allTasks.length;
+    document.getElementById('count-all').textContent = activeTasks.length;
     document.getElementById('count-overdue').textContent = overdueTasks.length;
     document.getElementById('count-upcoming').textContent = upcomingTasks.length;
+    document.getElementById('count-completed').textContent = completedTasks.length;
     
     if (filtered.length === 0) {
         tasksList.innerHTML = `
@@ -140,41 +199,72 @@ function renderTasks() {
         return;
     }
     
-    tasksList.innerHTML = filtered.map(task => {
-        const categoryColor = task.category?.color_hex || '#6B7280';
-        const severity = getOverdueSeverity(task.due_date);
-        const dueDateText = formatDueDate(task.due_date);
+    // Render with date grouping for Upcoming and Overdue views
+    if (currentTaskView === 'upcoming' || currentTaskView === 'overdue') {
+        const grouped = groupTasksByDate(filtered);
+        let html = '';
         
-        return `
-            <div class="task-card ${task.is_completed ? 'completed' : ''}">
-                <div class="flex items-start gap-3">
-                    <div 
-                        class="task-checkbox ${task.is_completed ? 'checked' : ''}"
-                        onclick="toggleTaskCompletion('${task.id}')"
-                    ></div>
-                    
-                    <div class="flex-1 min-w-0" onclick="openEditTaskModal('${task.id}')">
-                        <div class="flex items-center gap-2 mb-1">
-                            ${task.category ? `<div class="category-dot" style="background-color: ${categoryColor}"></div>` : ''}
-                            <h3 class="font-semibold text-gray-800 text-sm ${task.is_completed ? 'line-through text-gray-400' : ''} truncate flex-1">
-                                ${task.title}
-                            </h3>
-                            ${severity ? `<span class="overdue-badge overdue-${severity}">Overdue</span>` : ''}
-                        </div>
-                        
-                        <div class="flex items-center gap-2 flex-wrap">
-                            ${task.category ? `<span class="text-xs text-gray-500">${task.category.name}</span>` : ''}
-                            ${task.goal ? `<span class="text-xs text-gray-500">• ${task.goal.name}</span>` : ''}
-                            ${task.due_date ? `<span class="text-xs ${severity ? 'text-danger font-semibold' : 'text-gray-500'}">• ${dueDateText}</span>` : ''}
-                            ${task.is_recurring ? `<span class="text-xs text-primary">• <i class="fas fa-repeat"></i> Recurring</span>` : ''}
-                        </div>
-                        
-                        ${task.notes ? `<p class="text-xs text-gray-500 mt-1 truncate">${task.notes}</p>` : ''}
+        // Order of groups
+        const groupOrder = currentTaskView === 'overdue' 
+            ? ['overdue']
+            : ['today', 'tomorrow', 'thisWeek', 'later'];
+        
+        groupOrder.forEach(groupKey => {
+            const groupTasks = grouped[groupKey];
+            if (groupTasks && groupTasks.length > 0) {
+                html += `
+                    <div class="date-group-header">
+                        ${getDateGroupLabel(groupKey, groupTasks.length)}
                     </div>
+                    <div class="space-y-2 mb-4">
+                        ${groupTasks.map(task => renderTaskCard(task)).join('')}
+                    </div>
+                `;
+            }
+        });
+        
+        tasksList.innerHTML = html;
+    } else {
+        // No grouping for All and Completed views
+        tasksList.innerHTML = `<div class="space-y-2">${filtered.map(task => renderTaskCard(task)).join('')}</div>`;
+    }
+}
+
+// Render individual task card
+function renderTaskCard(task) {
+    const categoryColor = task.category?.color_hex || '#6B7280';
+    const severity = getOverdueSeverity(task.due_date);
+    const dueDateText = formatDueDate(task.due_date);
+    
+    return `
+        <div class="task-card ${task.is_completed ? 'completed' : ''}">
+            <div class="flex items-start gap-3">
+                <div 
+                    class="task-checkbox ${task.is_completed ? 'checked' : ''}"
+                    onclick="toggleTaskCompletion('${task.id}')"
+                ></div>
+                
+                <div class="flex-1 min-w-0" onclick="openEditTaskModal('${task.id}')">
+                    <div class="flex items-center gap-2 mb-1">
+                        ${task.category ? `<div class="category-dot" style="background-color: ${categoryColor}"></div>` : ''}
+                        <h3 class="font-semibold text-gray-800 text-sm ${task.is_completed ? 'line-through text-gray-400' : ''} truncate flex-1">
+                            ${task.title}
+                        </h3>
+                        ${severity ? `<span class="overdue-badge overdue-${severity}">OVERDUE</span>` : ''}
+                    </div>
+                    
+                    <div class="flex items-center gap-2 flex-wrap text-xs">
+                        ${task.category ? `<span class="text-gray-500">${task.category.name}</span>` : ''}
+                        ${task.goal ? `<span class="text-gray-500">•</span><span class="goal-link"><i class="fas fa-bullseye"></i> ${task.goal.name}</span>` : ''}
+                        ${task.due_date ? `<span class="text-gray-500">•</span><span class="${severity ? 'text-danger font-semibold' : 'text-gray-500'}">${dueDateText}</span>` : (currentTaskView === 'upcoming' ? `<span class="text-gray-500">•</span><span class="text-gray-400">No date</span>` : '')}
+                        ${task.is_recurring ? `<span class="text-gray-500">•</span><span class="text-primary"><i class="fas fa-repeat"></i> Recurring</span>` : ''}
+                    </div>
+                    
+                    ${task.notes ? `<p class="text-xs text-gray-500 mt-1 line-clamp-2">${task.notes}</p>` : ''}
                 </div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `;
 }
 
 // Filter tasks (called from search/filter inputs)
