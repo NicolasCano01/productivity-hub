@@ -102,6 +102,8 @@ function closeModalOnBackdrop(event, modalId) {
             closeHabitModal();
         } else if (modalId === 'task-modal') {
             closeTaskModal();
+        } else if (modalId === 'goal-modal') {
+            closeGoalModal();
         }
     }
 }
