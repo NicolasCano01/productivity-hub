@@ -59,7 +59,7 @@
         </header>
         
         <!-- Main Content Area -->
-        <main id="main-content" class="flex-1 overflow-auto custom-scrollbar">
+        <main class="flex-1 overflow-y-auto bg-gray-50" style="padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));">
             
             <!-- Loading Screen (Initial) -->
             <div id="loading-screen" class="h-full flex flex-col items-center justify-center gap-4">
@@ -197,8 +197,8 @@
             
         </main>
         
-        <!-- Bottom Navigation -->
-        <nav class="bg-white border-t border-gray-200 px-2 py-2">
+        <!-- Bottom Navigation -->    
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 flex items-center justify-around" style="z-index: 9999; padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
             <div class="flex justify-around items-center">
                 <button class="nav-btn active" data-panel="habits" onclick="switchPanel('habits')">
                     <i class="fas fa-list-check"></i>
