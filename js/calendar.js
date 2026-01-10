@@ -100,7 +100,7 @@ function renderCalendar() {
                             <div class="flex gap-0.5">
                                 ${hasHabits ? '<div class="w-1.5 h-1.5 rounded-full bg-success"></div>' : ''}
                                 ${hasTasks ? '<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>' : ''}
-                                ${hasGoals ? '<div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div>' : ''}
+                                ${hasGoals ? '<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>' : ''}
                             </div>
                         </div>
                     ` : ''}
@@ -132,7 +132,7 @@ function renderCalendar() {
                     <span class="text-gray-600">Tasks</span>
                 </div>
                 <div class="flex items-center gap-1">
-                    <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                    <div class="w-2 h-2 rounded-full bg-primary"></div>
                     <span class="text-gray-600">Goals</span>
                 </div>
             </div>
@@ -297,8 +297,8 @@ function openDateDetails(dateStr) {
             
             return `
                 <div class="flex items-center gap-2 py-1.5">
-                    ${goal.emoji ? `<span class="text-lg">${goal.emoji}</span>` : '<i class="fas fa-bullseye text-purple-500 text-sm"></i>'}
-                    <span class="flex-1 text-sm text-gray-700">${escapeHtml(goal.name)}</span>
+                    ${goal.emoji ? `<span class="text-lg">${goal.emoji}</span>` : '<i class="fas fa-bullseye text-primary text-sm"></i>'}
+                    <span class="flex-1 text-sm text-primary font-medium">${escapeHtml(goal.name)}</span>
                     <span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ${goalColor}20; color: ${goalColor};">${goal.goal_type}</span>
                 </div>
             `;
@@ -307,7 +307,7 @@ function openDateDetails(dateStr) {
         goalsHtml = `
             <div class="mb-3">
                 <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                    <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                    <<div class="w-2 h-2 rounded-full bg-primary"></div>
                     Goal Deadlines (${goalsOnDate.length})
                 </h4>
                 <div class="space-y-1">${goalsList}</div>
