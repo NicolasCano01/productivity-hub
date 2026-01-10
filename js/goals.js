@@ -32,14 +32,10 @@ async function renderGoals() {
     }
     
     goalsList.innerHTML = activeGoals.map(goal => {
-        const categoryMap = {
-            'travel': 'Travel', 'personal': 'Personal', 'career': 'Work',
-            'health': 'Health', 'financial': 'Finance', 'learning': 'Learning', 'other': 'Other'
-        };
-        
-        const categoryName = categoryMap[goal.goal_type] || 'Other';
-        const category = appState.categories.find(c => c.name === categoryName);
+        // Get category color directly
+        const category = appState.categories.find(c => c.id === goal.category_id);
         const goalColor = category ? category.color_hex : '#6B7280';
+        const categoryName = category ? category.name : 'Uncategorized';
         
         const taskCounts = getGoalTaskCounts(goal.id);
         const progress = calculateGoalProgress(goal.id);
@@ -47,7 +43,7 @@ async function renderGoals() {
         const hasDeadline = goal.due_date !== null;
         const emoji = goal.emoji || '';
         
-        return '<div class="goal-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow" data-goal-id="' + goal.id + '" draggable="true" ondragstart="handleGoalDragStart(event, \'' + goal.id + '\')" ondragover="handleGoalDragOver(event)" ondrop="handleGoalDrop(event, \'' + goal.id + '\')" ondragend="handleGoalDragEnd(event)" onclick="openGoalModal(\'' + goal.id + '\')"><div style="height: 3px; background-color: ' + goalColor + ';"></div><div class="p-2"><div class="flex items-start justify-between gap-2 mb-1"><div class="flex-1 min-w-0"><div class="flex items-center gap-1 mb-0.5">' + (emoji ? '<span class="text-lg">' + emoji + '</span>' : '') + '<h3 class="font-semibold text-gray-800 text-sm leading-tight">' + escapeHtml(goal.name) + '</h3><span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ' + goalColor + '20; color: ' + goalColor + ';">' + goal.goal_type + '</span></div>' + (goal.description ? '<p class="text-xs text-gray-500 line-clamp-1">' + escapeHtml(goal.description) + '</p>' : '') + '</div></div><div class="mb-1"><div class="flex items-center justify-between mb-0.5"><span class="text-xs text-gray-500">Progress</span><span class="text-xs font-bold" style="color: ' + goalColor + ';">' + progress + '%</span></div><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="h-full rounded-full transition-all duration-300" style="width: ' + progress + '%; background-color: ' + goalColor + ';"></div></div></div><div class="flex items-center justify-between text-xs"><div class="flex items-center gap-2">' + (taskCounts.total > 0 ? '<span class="flex items-center gap-1 text-gray-500"><i class="fas fa-tasks text-xs"></i><span>' + taskCounts.completed + '/' + taskCounts.total + '</span></span>' : '<span class="text-gray-400">No tasks</span>') + '</div><div class="flex items-center gap-2">' + (hasDeadline ? '<span class="flex items-center gap-1 ' + (dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-500') + '"><i class="fas fa-clock text-xs"></i><span>' + dueDate.text + '</span></span>' : '<span class="flex items-center gap-1 text-gray-400"><i class="fas fa-infinity text-xs"></i></span>') + (progress >= 100 ? '<button onclick="event.stopPropagation(); markGoalComplete(\'' + goal.id + '\');" class="text-success hover:text-green-700 ml-1" title="Mark as complete"><i class="fas fa-check-circle"></i></button>' : '') + '</div></div></div></div>';
+        return '<div class="goal-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow" data-goal-id="' + goal.id + '" draggable="true" ondragstart="handleGoalDragStart(event, \'' + goal.id + '\')" ondragover="handleGoalDragOver(event)" ondrop="handleGoalDrop(event, \'' + goal.id + '\')" ondragend="handleGoalDragEnd(event)" onclick="openGoalModal(\'' + goal.id + '\')"><div style="height: 3px; background-color: ' + goalColor + ';"></div><div class="p-2"><div class="flex items-start justify-between gap-2 mb-1"><div class="flex-1 min-w-0"><div class="flex items-center gap-1 mb-0.5">' + (emoji ? '<span class="text-lg">' + emoji + '</span>' : '') + '<h3 class="font-semibold text-gray-800 text-sm leading-tight">' + escapeHtml(goal.name) + '</h3><span class="text-xs px-1.5 py-0.5 rounded" style="background-color: ' + goalColor + '20; color: ' + goalColor + ';">' + categoryName + '</span></div>' + (goal.description ? '<p class="text-xs text-gray-500 line-clamp-1">' + escapeHtml(goal.description) + '</p>' : '') + '</div></div><div class="mb-1"><div class="flex items-center justify-between mb-0.5"><span class="text-xs text-gray-500">Progress</span><span class="text-xs font-bold" style="color: ' + goalColor + ';">' + progress + '%</span></div><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="h-full rounded-full transition-all duration-300" style="width: ' + progress + '%; background-color: ' + goalColor + ';"></div></div></div><div class="flex items-center justify-between text-xs"><div class="flex items-center gap-2">' + (taskCounts.total > 0 ? '<span class="flex items-center gap-1 text-gray-500"><i class="fas fa-tasks text-xs"></i><span>' + taskCounts.completed + '/' + taskCounts.total + '</span></span>' : '<span class="text-gray-400">No tasks</span>') + '</div><div class="flex items-center gap-2">' + (hasDeadline ? '<span class="flex items-center gap-1 ' + (dueDate.isOverdue ? 'text-danger font-semibold' : 'text-gray-500') + '"><i class="fas fa-clock text-xs"></i><span>' + dueDate.text + '</span></span>' : '<span class="flex items-center gap-1 text-gray-400"><i class="fas fa-infinity text-xs"></i></span>') + (progress >= 100 ? '<button onclick="event.stopPropagation(); markGoalComplete(\'' + goal.id + '\');" class="text-success hover:text-green-700 ml-1" title="Mark as complete"><i class="fas fa-check-circle"></i></button>' : '') + '</div></div></div></div>';
     }).join('');
 }
 
@@ -102,7 +98,7 @@ function openGoalModal(goalId) {
         
         document.getElementById('goal-name').value = goal.name || '';
         document.getElementById('goal-description').value = goal.description || '';
-        document.getElementById('goal-type').value = goal.goal_type || 'other';
+        document.getElementById('goal-category').value = goal.category_id || '';
         document.getElementById('goal-due-date').value = goal.due_date || '';
         document.getElementById('goal-emoji').value = goal.emoji || '';
         
@@ -203,7 +199,7 @@ async function saveGoal(event) {
     const goalData = {
         name: document.getElementById('goal-name').value.trim(),
         description: document.getElementById('goal-description').value.trim() || null,
-        goal_type: document.getElementById('goal-type').value,
+        category_id: document.getElementById('goal-category').value || null,
         due_date: document.getElementById('goal-due-date').value || null,
         emoji: document.getElementById('goal-emoji').value || null
     };
