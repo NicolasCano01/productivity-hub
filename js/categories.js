@@ -174,26 +174,40 @@ async function saveCategory(event) {
     }
 }
 
+
 // Delete category
 async function deleteCategory(categoryId) {
     const category = appState.categories.find(c => c.id === categoryId);
     if (!category) return;
     
-    // Count tasks/goals using this category
-    const tasksCount = appState.tasks.filter(t => t.category_id === categoryId).length;
-    const goalsCount = appState.goals.filter(g => {
-        const categoryMap = {
-            'travel': 'Travel', 'personal': 'Personal', 'career': 'Work',
-            'health': 'Health', 'financial': 'Finance', 'learning': 'Learning', 'other': 'Other'
-        };
-        const categoryName = categoryMap[g.goal_type] || 'Other';
-        const matchedCat = appState.categories.find(c => c.name === categoryName);
-        return matchedCat && matchedCat.id === categoryId;
-    }).length;
+    // Get tasks/goals using this category
+    const linkedTasks = appState.tasks.filter(t => t.category_id === categoryId);
+    const linkedGoals = appState.goals.filter(g => g.category_id === categoryId);
     
     let confirmMsg = 'Delete "' + category.name + '" category?';
-    if (tasksCount > 0 || goalsCount > 0) {
-        confirmMsg += '\n\n' + tasksCount + ' task(s) and ' + goalsCount + ' goal(s) will be unlinked.';
+    
+    if (linkedTasks.length > 0 || linkedGoals.length > 0) {
+        confirmMsg += '\n\nThis will unlink:\n';
+        
+        if (linkedTasks.length > 0) {
+            confirmMsg += '\n📋 ' + linkedTasks.length + ' Task(s):\n';
+            linkedTasks.slice(0, 5).forEach(task => {
+                confirmMsg += '  • ' + task.title + '\n';
+            });
+            if (linkedTasks.length > 5) {
+                confirmMsg += '  ... and ' + (linkedTasks.length - 5) + ' more\n';
+            }
+        }
+        
+        if (linkedGoals.length > 0) {
+            confirmMsg += '\n🎯 ' + linkedGoals.length + ' Goal(s):\n';
+            linkedGoals.slice(0, 5).forEach(goal => {
+                confirmMsg += '  • ' + goal.name + '\n';
+            });
+            if (linkedGoals.length > 5) {
+                confirmMsg += '  ... and ' + (linkedGoals.length - 5) + ' more\n';
+            }
+        }
     }
     
     if (!confirm(confirmMsg)) return;
