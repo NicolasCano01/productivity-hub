@@ -47,6 +47,8 @@ function switchPanel(panelName) {
     // Render panel content if needed
     if (panelName === 'tasks') {
         renderTasks();
+    } else if (panelName === 'calendar') {
+        renderCalendar();
     }
     
     console.log(`Switched to ${panelName} panel`);
