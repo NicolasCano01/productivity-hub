@@ -135,6 +135,9 @@ function openGoalModal(goalId) {
         if (taskInfo) taskInfo.innerHTML = '';
     }
     
+   // Populate category dropdown
+    populateGoalCategories();
+    
     modal.classList.remove('hidden');
 }
 
@@ -192,6 +195,25 @@ function closeGoalModal() {
     document.getElementById('goal-modal').classList.add('hidden');
     document.getElementById('goal-form').reset();
     editingGoalId = null;
+}
+
+// Populate category dropdown
+function populateGoalCategories() {
+    const select = document.getElementById('goal-category');
+    if (!select) return;
+    
+    // Keep "No category" option
+    select.innerHTML = '<option value="">No category</option>';
+    
+    // Add all categories
+    appState.categories
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            select.appendChild(option);
+        });
 }
 
 async function saveGoal(event) {
